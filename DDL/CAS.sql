@@ -1,6 +1,6 @@
 ﻿/*
 Created: 09.03.2026
-Modified: 07.04.2026
+Modified: 05.05.2026
 Project: BankSystem
 Model: CAS
 Version: 4f5956e
@@ -20,12 +20,16 @@ CREATE TABLE "borrower"
   "email" Character varying(100),
   "vip_flag" Boolean NOT NULL,
   "reg_date" Timestamp with time zone,
-  "inn" Character varying(12)
+  "inn" Character varying(12),
+  "income_value" Money,
+  "income_period" Integer
 )
 WITH (
   autovacuum_enabled=true)
 ;
 COMMENT ON COLUMN "borrower"."inn" IS '12 знаков для физлица и 10 знаков для юрлица'
+;
+COMMENT ON COLUMN "borrower"."income_period" IS 'В месяцах'
 ;
 
 ALTER TABLE "borrower" ADD CONSTRAINT "PK_borrower" PRIMARY KEY ("id")
@@ -41,7 +45,6 @@ CREATE TABLE "individual_borrower"
   "residential_address" Character varying(500),
   "registration_address" Character varying(500),
   "workplace" Character varying(50),
-  "monthly_income" Money,
   "borrower_id" Integer NOT NULL
 )
 WITH (
@@ -67,7 +70,6 @@ CREATE TABLE "legal_entity_borrower"
   "ceo_full_name" Character varying(200),
   "contact_person" Character varying(200),
   "company_phone" Character varying(30),
-  "annual_revenue" Money,
   "borrower_id" Integer NOT NULL
 )
 WITH (
@@ -160,13 +162,13 @@ CREATE TABLE "credit_product"
   "name" Character varying(200) NOT NULL,
   "min_amount" Money NOT NULL,
   "max_amount" Money NOT NULL
-    CONSTRAINT "CheckMaxAmount" CHECK (check(max_amount >= min_amount)),
+    CONSTRAINT "CheckMaxAmount" CHECK (max_amount >= min_amount),
   "min_term" Integer NOT NULL
-    CONSTRAINT "CheckMinTerm" CHECK (check(min_term > 0)),
+    CONSTRAINT "CheckMinTerm" CHECK (min_term > 0),
   "max_term" Integer NOT NULL
-    CONSTRAINT "CheckMaxTerm" CHECK (check(max_term >= min_term)),
+    CONSTRAINT "CheckMaxTerm" CHECK (max_term >= min_term),
   "base_rate" Numeric(5,2) NOT NULL
-    CONSTRAINT "CheckBaseRate" CHECK (check(base_rate > 0)),
+    CONSTRAINT "CheckBaseRate" CHECK (base_rate > 0),
   "is_active" Boolean DEFAULT true NOT NULL,
   "description" Text,
   "product_type_id" Integer
@@ -205,7 +207,7 @@ CREATE TABLE "application"
   "reg_date" Timestamp NOT NULL,
   "requested_amount" Money NOT NULL,
   "requested_term" Integer NOT NULL
-    CONSTRAINT "CheckRequestedTerm" CHECK (check(requested_term > 0)),
+    CONSTRAINT "CheckRequestedTerm" CHECK (requested_term > 0),
   "purpose" Character varying(500),
   "comment" Text,
   "borrower_id" Integer NOT NULL,
@@ -261,15 +263,12 @@ CREATE TABLE "application_document"
   "file_path" Character varying(500),
   "upload_date" Timestamp,
   "comment" Character varying(500),
-  "application_id" Integer,
+  "application_id" Integer NOT NULL,
   "document_type_id" Integer,
   "status_id" Integer
 )
 WITH (
   autovacuum_enabled=true)
-;
-
-CREATE INDEX "IX_document_attach" ON "application_document" ("application_id")
 ;
 
 CREATE INDEX "IX_document_type" ON "application_document" ("document_type_id")
@@ -278,7 +277,7 @@ CREATE INDEX "IX_document_type" ON "application_document" ("document_type_id")
 CREATE INDEX "IX_verification_status" ON "application_document" ("status_id")
 ;
 
-ALTER TABLE "application_document" ADD CONSTRAINT "PK_application_document" PRIMARY KEY ("id")
+ALTER TABLE "application_document" ADD CONSTRAINT "PK_application_document" PRIMARY KEY ("id","application_id")
 ;
 
 -- Table application_document_type
@@ -390,7 +389,7 @@ ALTER TABLE "application_document"
   ADD CONSTRAINT "attach"
     FOREIGN KEY ("application_id")
     REFERENCES "application" ("id")
-      ON DELETE RESTRICT
+      ON DELETE CASCADE
       ON UPDATE RESTRICT
 ;
 
